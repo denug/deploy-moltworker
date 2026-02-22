@@ -155,8 +155,9 @@ if [[ "$WANT_TELEGRAM" == "y" || "$WANT_TELEGRAM" == "Y" ]]; then
   TELEGRAM_BOT_TOKEN=$(prompt "TELEGRAM_BOT_TOKEN" "Paste your Telegram bot token:" true)
 fi
 
-# --- Generate gateway token ---
+# --- Generate gateway token and CDP secret ---
 MOLTBOT_GATEWAY_TOKEN=$(openssl rand -hex 32)
+CDP_SECRET=$(openssl rand -hex 32)
 
 # --- Summary ---
 echo ""
@@ -290,6 +291,7 @@ if op item get "$OP_ITEM" --vault "$OP_VAULT" &>/dev/null 2>&1; then
     "R2_SECRET_ACCESS_KEY[concealed]=$R2_SECRET_ACCESS_KEY" \
     "WORKER_URL[text]=$WORKER_URL" \
     ${TELEGRAM_BOT_TOKEN:+"TELEGRAM_BOT_TOKEN[concealed]=$TELEGRAM_BOT_TOKEN"} \
+    "CDP_SECRET[concealed]=$CDP_SECRET" \
     &>/dev/null
 else
   op item create \
@@ -307,6 +309,7 @@ else
     "R2_SECRET_ACCESS_KEY[concealed]=$R2_SECRET_ACCESS_KEY" \
     "WORKER_URL[text]=$WORKER_URL" \
     ${TELEGRAM_BOT_TOKEN:+"TELEGRAM_BOT_TOKEN[concealed]=$TELEGRAM_BOT_TOKEN"} \
+    "CDP_SECRET[concealed]=$CDP_SECRET" \
     &>/dev/null
 fi
 
@@ -353,6 +356,7 @@ set_secret "R2_ACCESS_KEY_ID"     "$R2_ACCESS_KEY_ID"
 set_secret "R2_SECRET_ACCESS_KEY" "$R2_SECRET_ACCESS_KEY"
 set_secret "CF_ACCOUNT_ID"        "$CF_ACCOUNT_ID"
 set_secret "WORKER_URL"           "$WORKER_URL"
+set_secret "CDP_SECRET"           "$CDP_SECRET"
 [[ -n "$TELEGRAM_BOT_TOKEN" ]] && set_secret "TELEGRAM_BOT_TOKEN" "$TELEGRAM_BOT_TOKEN"
 
 # =============================================================================
