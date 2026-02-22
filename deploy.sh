@@ -384,6 +384,14 @@ log "Worker deployed!"
 echo ""
 echo -e "  Worker URL: ${CYAN}$WORKER_URL${NC}"
 
+# Install browser skill into R2 if CDP is enabled (before final deploy)
+if [[ -n "$CDP_SECRET" ]]; then
+  info "Installing cloudflare-browser skill into R2..."
+  WORKER_NAME="$WORKER_NAME" R2_BUCKET="$R2_BUCKET" \
+    "$(dirname "$0")/scripts/setup-browser-skill.sh" || \
+    warn "Browser skill upload failed — run scripts/setup-browser-skill.sh manually later"
+fi
+
 # =============================================================================
 # PHASE 8 — CLOUDFLARE ACCESS SETUP (one browser step)
 # =============================================================================

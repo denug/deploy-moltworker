@@ -112,6 +112,46 @@ FIXED in `start-openclaw.sh` (deployed 2026-02-22, image a92c02d6)
 
 ---
 
+## 2026-02-22 — Browser skill missing on container start
+
+### Issue
+After enabling CDP (`CDP_SECRET` set, `/cdp/*` endpoints live), OpenClaw had no
+browser skill loaded. The skill files from `cloudflare/moltworker/skills/cloudflare-browser`
+were not present in the container, so the browser was unavailable until manually
+installed via `/debug/cli` — and lost again on the next container restart.
+
+### Root cause
+The `denug/moltbot-sandbox` image does not bundle the `cloudflare-browser` skill.
+`start-openclaw.sh` restores from R2 on boot, so any files not in R2 are missing
+every time the container cold-starts.
+
+### Fix
+- Added `scripts/setup-browser-skill.sh` — downloads the 4 skill files from the
+  public `cloudflare/moltworker` repo and uploads them to R2 under
+  `skills/cloudflare-browser/`. On next container boot they are restored to
+  `/root/.openclaw/skills/cloudflare-browser/` before OpenClaw starts.
+- Updated `deploy.sh` Phase 7 to call `setup-browser-skill.sh` automatically
+  when the user opted into CDP during setup.
+
+### Existing instance (manual fix)
+From `~/moltworker` (or any machine with wrangler auth + R2 creds):
+```bash
+WORKER_NAME=moltbot-sandbox R2_BUCKET=moltbot-data \
+  ./scripts/setup-browser-skill.sh
+```
+Then restart the container (or wait for next cold start).
+
+### Skill files installed
+- `skills/cloudflare-browser/SKILL.md`
+- `skills/cloudflare-browser/scripts/cdp-client.js`
+- `skills/cloudflare-browser/scripts/screenshot.js`
+- `skills/cloudflare-browser/scripts/video.js`
+
+### Status
+FIXED in `deploy.sh` + `scripts/setup-browser-skill.sh`
+
+---
+
 ## Log format for future entries
 
 ```
