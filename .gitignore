@@ -1,0 +1,11 @@
+# Never commit secrets or local environment files
+.env
+.dev.vars
+*.env.local
+
+# 1Password exports
+*.1pux
+*.op
+
+# macOS
+.DS_Store
