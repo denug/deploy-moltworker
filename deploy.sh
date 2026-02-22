@@ -155,6 +155,19 @@ if [[ "$WANT_TELEGRAM" == "y" || "$WANT_TELEGRAM" == "Y" ]]; then
   TELEGRAM_BOT_TOKEN=$(prompt "TELEGRAM_BOT_TOKEN" "Paste your Telegram bot token:" true)
 fi
 
+# --- CDP browser automation (optional) ---
+echo ""
+heading "Browser Automation / CDP (optional)"
+info "Enables OpenClaw to control a headless browser for web scraping, screenshots, etc."
+info "A shared secret will be auto-generated and stored in 1Password."
+echo ""
+ask "Do you want browser automation (CDP) support? (y/n)"
+read -r WANT_CDP
+CDP_SECRET=""
+if [[ "$WANT_CDP" == "y" || "$WANT_CDP" == "Y" ]]; then
+  CDP_SECRET=$(openssl rand -hex 32)
+fi
+
 # --- Generate gateway token ---
 MOLTBOT_GATEWAY_TOKEN=$(openssl rand -hex 32)
 
@@ -166,6 +179,7 @@ echo -e "  ${BOLD}Worker:${NC}       $WORKER_NAME"
 echo -e "  ${BOLD}R2 Bucket:${NC}    $R2_BUCKET"
 echo -e "  ${BOLD}CF Zero Trust:${NC} $CF_ACCESS_TEAM_DOMAIN"
 echo -e "  ${BOLD}Telegram:${NC}     $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo "enabled" || echo "skipped")"
+echo -e "  ${BOLD}CDP/Browser:${NC}  $([ -n "$CDP_SECRET" ] && echo "enabled (secret auto-generated)" || echo "skipped")"
 echo -e "  ${BOLD}Gateway token:${NC} [generated — will be saved to 1Password]"
 echo -e "  ${BOLD}1Password item:${NC} '$OP_ITEM' in '$OP_VAULT' vault"
 echo ""
@@ -290,6 +304,7 @@ if op item get "$OP_ITEM" --vault "$OP_VAULT" &>/dev/null 2>&1; then
     "R2_SECRET_ACCESS_KEY[concealed]=$R2_SECRET_ACCESS_KEY" \
     "WORKER_URL[text]=$WORKER_URL" \
     ${TELEGRAM_BOT_TOKEN:+"TELEGRAM_BOT_TOKEN[concealed]=$TELEGRAM_BOT_TOKEN"} \
+    ${CDP_SECRET:+"CDP_SECRET[concealed]=$CDP_SECRET"} \
     &>/dev/null
 else
   op item create \
@@ -307,6 +322,7 @@ else
     "R2_SECRET_ACCESS_KEY[concealed]=$R2_SECRET_ACCESS_KEY" \
     "WORKER_URL[text]=$WORKER_URL" \
     ${TELEGRAM_BOT_TOKEN:+"TELEGRAM_BOT_TOKEN[concealed]=$TELEGRAM_BOT_TOKEN"} \
+    ${CDP_SECRET:+"CDP_SECRET[concealed]=$CDP_SECRET"} \
     &>/dev/null
 fi
 
@@ -354,6 +370,7 @@ set_secret "R2_SECRET_ACCESS_KEY" "$R2_SECRET_ACCESS_KEY"
 set_secret "CF_ACCOUNT_ID"        "$CF_ACCOUNT_ID"
 set_secret "WORKER_URL"           "$WORKER_URL"
 [[ -n "$TELEGRAM_BOT_TOKEN" ]] && set_secret "TELEGRAM_BOT_TOKEN" "$TELEGRAM_BOT_TOKEN"
+[[ -n "$CDP_SECRET" ]] && set_secret "CDP_SECRET" "$CDP_SECRET"
 
 # =============================================================================
 # PHASE 7 — INITIAL DEPLOY
@@ -426,6 +443,13 @@ echo -e "  ${CYAN}${WORKER_URL}/_admin/${NC}"
 echo ""
 echo -e "  ${YELLOW}Note:${NC} First visit may take 1-2 minutes for the container to start."
 echo -e "  ${YELLOW}Note:${NC} Visit /_admin/ to pair your device before using the Control UI."
+
+if [[ -n "$CDP_SECRET" ]]; then
+  echo ""
+  echo -e "  ${BOLD}Browser Automation (CDP):${NC}"
+  echo -e "  ${CYAN}${WORKER_URL}/cdp/json/version?secret=<CDP_SECRET>${NC}"
+  echo -e "  CDP_SECRET is saved in 1Password → '$OP_ITEM'"
+fi
 echo ""
 echo -e "  ${BOLD}Your gateway token is saved in 1Password → '$OP_ITEM'${NC}"
 echo ""
