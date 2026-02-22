@@ -14,6 +14,7 @@ One-command deploy of your own personal AI assistant (Claude-powered) on Cloudfl
 - Telegram bot integration
 - Persistent memory across sessions
 - Web admin dashboard
+- Optional: browser automation (web scraping, screenshots, video) via CDP
 - ~$35/month to run 24/7
 
 ---
@@ -43,6 +44,10 @@ You need accounts and credentials from **four services** before running the scri
 - Message [@BotFather](https://t.me/botfather) on Telegram
 - Send `/newbot` and follow prompts to get a bot token
 
+### 5. Browser Automation / CDP (optional)
+- No extra accounts needed — the script auto-generates a `CDP_SECRET` for you
+- Enables OpenClaw to control a headless browser: screenshots, video, web scraping
+
 ---
 
 ## Deploy
@@ -65,6 +70,29 @@ https://moltbot-sandbox.<your-subdomain>.workers.dev/?token=<your-token>
 Your gateway token is in 1Password → **Private → moltworker**.
 
 First visit may take 1–2 minutes (container cold start). Visit `/_admin/` to pair your Telegram account.
+
+### Browser Automation (if you enabled CDP)
+
+Your worker exposes a Chrome DevTools Protocol shim. All endpoints require `?secret=<CDP_SECRET>` (saved in 1Password → **Private → moltworker**).
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /cdp/json/version` | Browser version info |
+| `GET /cdp/json/list` | List open browser targets |
+| `GET /cdp/json/new` | Create a new browser target |
+| `WS /cdp/devtools/browser/{id}` | WebSocket CDP connection |
+
+Built-in skills are pre-installed in the container at `/root/clawd/skills/cloudflare-browser/`:
+
+```bash
+# Take a screenshot
+node /root/clawd/skills/cloudflare-browser/scripts/screenshot.js https://example.com output.png
+
+# Create a video from multiple URLs
+node /root/clawd/skills/cloudflare-browser/scripts/video.js "https://site1.com,https://site2.com" output.mp4 --scroll
+```
+
+See `skills/cloudflare-browser/SKILL.md` inside the deployed container for full documentation.
 
 ---
 

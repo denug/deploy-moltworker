@@ -84,6 +84,16 @@ Only needed if you want to chat with your AI assistant via Telegram.
 
 ---
 
+## 6. Browser Automation / CDP (optional)
+
+No extra accounts or credentials required.
+
+When `deploy.sh` asks **"Do you want browser automation (CDP) support?"**, answer `y`. The script auto-generates a `CDP_SECRET` and stores it in 1Password. The secret is set as a Cloudflare Worker secret automatically.
+
+After deploy, use the CDP endpoints at `https://<your-worker>/cdp/...?secret=<CDP_SECRET>` to control a headless browser from within OpenClaw.
+
+---
+
 ## Cost Summary
 
 | Item | Monthly Cost |
