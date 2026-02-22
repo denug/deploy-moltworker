@@ -168,6 +168,24 @@ op item get "moltworker" --vault Private --fields label=MOLTBOT_GATEWAY_TOKEN --
 
 ---
 
+## Cron job runs but Telegram message never arrives
+
+**Root cause:** Telling the cron agent to "send a message to @username" doesn't work because cron jobs run as isolated agents with no access to your Telegram session.
+
+**Fix:** Use `announce` delivery mode when registering the cron job. This routes the agent's output back to you automatically through the correct channel.
+
+```bash
+openclaw cron add \
+  --name "my-job" \
+  --schedule "0 9 * * *" \
+  --command "echo 'your message or script here'" \
+  --deliver telegram
+```
+
+Under the hood this sets `delivery: { mode: "announce", channel: "telegram" }` — the output of the command is delivered to you via Telegram when the job completes. Do not instruct the agent itself to send a message to a username.
+
+---
+
 ## Need to start completely fresh
 
 ```bash
