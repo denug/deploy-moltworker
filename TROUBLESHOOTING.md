@@ -2,34 +2,67 @@
 
 ## Browser automation not working
 
-Browser rendering requires a one-time Cloudflare Access bypass for the `/cdp` path. Without it, CF Access intercepts every `/cdp` request at the edge before the worker code runs — even though the endpoint has its own `CDP_SECRET` auth.
+Browser rendering requires two setup steps: a CF Access bypass and configuring the browser profile via the OpenClaw CLI.
 
 ### Step 1 — Create a CF Access bypass for `/cdp`
 
-1. Go to [one.dash.cloudflare.com](https://one.dash.cloudflare.com) → **Access → Applications → Add an Application**
-2. Choose **Self-Hosted**
-3. Fill in:
-   - **Name:** `moltbot-sandbox CDP`
-   - **Subdomain:** `moltbot-sandbox` (or your worker name)
-   - **Domain:** your `*.workers.dev` domain
-   - **Path:** `/cdp`
-4. Click **Next**
-5. Add a policy:
-   - **Policy name:** `bypass`
-   - **Action:** `Bypass`
-   - Under **Include:** select `Everyone`
-6. Save
+CF Access intercepts all requests to your worker before they reach your code. You need a bypass rule so the browser skill's WebSocket connection to `/cdp` can reach the worker directly (the `CDP_SECRET` query param handles auth instead).
 
-This creates a more-specific rule that allows `/cdp` requests to pass through to the worker, where `CDP_SECRET` handles authentication.
+**Easiest: use the Cloudflare API (requires a one-time token)**
 
-### Step 2 — Verify it's working
+1. Go to `dash.cloudflare.com` → **My Profile** → **API Tokens** → **Create Token**
+2. Use **Create Custom Token** with permission: `Account` → `Access: Apps and Policies` → `Edit`
+3. Run:
+```bash
+ACCOUNT_ID="your-cf-account-id"
+WORKER_NAME="moltbot-sandbox"
+WORKERS_SUBDOMAIN="yourname"  # e.g. yourname from yourname.workers.dev
+CF_TOKEN="your-token-here"
+
+curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
+  -H "Authorization: Bearer $CF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"type\": \"self_hosted\",
+    \"name\": \"moltbot CDP bypass\",
+    \"destinations\": [{\"type\": \"public\", \"uri\": \"$WORKER_NAME.$WORKERS_SUBDOMAIN.workers.dev/cdp\"}],
+    \"session_duration\": \"24h\",
+    \"policies\": [{
+      \"name\": \"bypass-everyone\",
+      \"decision\": \"bypass\",
+      \"include\": [{\"everyone\": {}}],
+      \"exclude\": [], \"require\": [], \"precedence\": 1
+    }]
+  }"
+```
+4. Delete the API token immediately after.
+
+**Or manually** via Zero Trust dashboard → Access → Applications → Add Self-Hosted → path `/cdp` → policy Bypass/Everyone.
+
+### Step 2 — Verify `/cdp` is accessible
 
 ```bash
 CDP_SECRET=$(op item get "moltworker" --vault Private --fields label="CDP_SECRET" --reveal)
 WORKER_URL=$(op item get "moltworker" --vault Private --fields label="WORKER_URL")
-curl "$WORKER_URL/cdp/json/version?secret=$CDP_SECRET"
+curl "$WORKER_URL/cdp"
 ```
-Should return JSON with `"Browser": "Cloudflare-Browser-Rendering/..."`.
+Should return JSON listing supported CDP methods (not a 302 redirect).
+
+### Step 3 — Configure the browser profile via OpenClaw CLI
+
+**Do not** edit `openclaw.json` by hand or via startup script — OpenClaw validates the schema strictly. Use the CLI instead.
+
+Open the debug CLI at `https://<your-worker>/_admin/debug/cli` and run:
+```
+openclaw browser --help
+```
+to find the exact `profile add` command, then add the Cloudflare profile pointing to your `/cdp` endpoint:
+```
+openclaw browser profile add cloudflare \
+  --cdp-url "https://<your-worker>/cdp?secret=<CDP_SECRET>"
+```
+
+This writes a valid, schema-compliant browser profile to `openclaw.json` and saves to R2.
 
 **If CDP_SECRET is missing** (installs before this was added):
 ```bash
